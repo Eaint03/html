@@ -2722,6 +2722,7 @@ async function runBomCheck(mapping,rows){
     const sheetRows=await sheetRead(),inv={},invByLoc={};
     sheetRows.slice(1).forEach((r,i)=>{const _effLoc=getEffectiveLocation(r,i+2)||r[5]||"";if(r[2])inv[String(r[2]||"").toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:_effLoc,effLoc:_effLoc};if(r[5])invByLoc[String(r[5]||"").toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:_effLoc,effLoc:_effLoc,mpn:r[2]||""};
 if(_effLoc&&_effLoc!==r[5])invByLoc[String(_effLoc).toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:_effLoc,effLoc:_effLoc,mpn:r[2]||""};
+    });
     let totalParts=0,inStock=0,notEnough=0,notFound=0; bomPendingDispatch=[];
     items.forEach(({pn,qty,qtyPerSet,sets,_row})=>{totalParts++;const key=pn.toUpperCase();const stock=inv[key]||invByLoc[key];if(!stock){notFound++;_row.__status="NOT IN INVENTORY";_row.__stock=0;_row.__needed=qty;_row.__shortage=qty;_row.__location="";}else if(stock.qty<qty){
   notEnough++;_row.__status="NOT ENOUGH";_row.__stock=stock.qty;_row.__needed=qty;_row.__shortage=qty-stock.qty;_row.__location=stock.effLoc||stock.location||"";
