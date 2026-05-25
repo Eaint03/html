@@ -455,6 +455,7 @@
  <button class="loc-filter-btn active" onclick="setLocFilter('all',this)">All</button>
  <button class="loc-filter-btn" onclick="setLocFilter('PB',this)">PB</button>
  <button class="loc-filter-btn" onclick="setLocFilter('T',this)">T</button>
+ <button class="loc-filter-btn" onclick="setLocFilter('TR',this)">TR</button>
  <button class="loc-filter-btn" onclick="setLocFilter('LB',this)">LB</button>
  <button class="loc-filter-btn" onclick="setLocFilter('DR',this)">DR</button>
  <button class="loc-filter-btn" onclick="setLocFilter('PD',this)">PD</button>
@@ -1467,6 +1468,7 @@ const PB_NAMES = {
 const LOCATIONS = [
   ...Array.from({ length: 73 }, (_, i) => makeLoc('PB' + i, PB_NAMES['PB' + i] || '', 'PB')),
   ...locRange('T', 1, 20, { T01:'USB', T02:'简易牛角座排线插座', T03:'连接器插头牛角座', T05:'排母 连接器' }),
+  makeLoc('TR1','电阻料盘 RES0603','TR'), makeLoc('TR2','电容料盘','TR'), makeLoc('TR3','芯片料盘','TR'), makeLoc('TR4','RES0402','TR'), makeLoc('TR5','CHIP','TR'), makeLoc('TR6','芯片料盘','TR'),
   ...locRange('LB', 1, 36),
   ...locRange('DR', 1, 12, { DR03:'Module 模块', DR04:'EVK TOOLS', DR06:'CONNECTOR 连接器', DR07:'MISC' }),
   ...locRange('PD', 1, 10, { PD09:'PCB板' }),
@@ -1674,13 +1676,19 @@ function renderLocations() {
  const search = normalizeLocText(searchRaw);
  const grid = document.getElementById('locGrid');
  if (!grid) return;
- const mainTypes = ['PB','T','LB','DR','PD','SD','BX','CN','SF'];
+ const mainTypes = ['PB','T','TR','LB','DR','PD','SD','BX','CN','SF'];
  const filtered = LOCATIONS.filter(l => {
    const locType = l.type || ((l.id.match(/^[A-Z]+/) || ['OTHER'])[0]);
    const matchFilter = locFilter === 'all'
      || (locFilter === 'OTHER' && !mainTypes.includes(locType))
      || locType === locFilter || l.id.startsWith(locFilter);
-   const matchSearch = !search || normalizeLocText(l.id).includes(search) || normalizeLocText(l.name).includes(search);
+   // ID: match from start OR exact contains; Name: only match whole-word boundaries
+  const normId   = normalizeLocText(l.id);
+  const normName = normalizeLocText(l.name);
+  const idMatch  = normId.startsWith(search) || normId.includes(search);
+  // For name, only match if search is 3+ chars to avoid false positives like "tr" in "transistor"
+  const nameMatch = search.length >= 3 && normName.includes(search);
+  const matchSearch = !search || idMatch || nameMatch;
    return matchFilter && matchSearch;
  });
  grid.innerHTML = '';
@@ -2712,9 +2720,14 @@ async function runBomCheck(mapping,rows){
   const setsUsed=mapping.Sets&&items.some(i=>i.sets>1);
   try{
     const sheetRows=await sheetRead(),inv={},invByLoc={};
-sheetRows.slice(1).forEach((r,i)=>{const nexwahPn=getEffectiveLocation(r,i+2)||"";const loc=String(r[5]||"").trim();if(r[2])inv[String(r[2]||"").toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:nexwahPn||loc};if(loc)invByLoc[loc.toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:nexwahPn||loc,mpn:r[2]||""};if(nexwahPn&&nexwahPn!==loc)invByLoc[nexwahPn.toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:nexwahPn,mpn:r[2]||""};});
-   let totalParts=0,inStock=0,notEnough=0,notFound=0;
-    items.forEach(({pn,qty,qtyPerSet,sets,_row})=>{totalParts++;const key=pn.toUpperCase();const stock=inv[key]||invByLoc[key];if(!stock){notFound++;_row.__status="NOT IN INVENTORY";_row.__stock=0;_row.__needed=qty;_row.__shortage=qty;_row.__location="";}else if(stock.qty<qty){notEnough++;_row.__status="NOT ENOUGH";_row.__stock=stock.qty;_row.__needed=qty;_row.__shortage=qty-stock.qty;_row.__location=stock.location||"";}else{inStock++;bomPendingDispatch.push({pn,qty,rowIdx:stock.rowIdx,currentQty:stock.qty});_row.__status="IN STOCK";_row.__stock=stock.qty;_row.__needed=qty;_row.__shortage=0;_row.__location=stock.location||"";}});
+    sheetRows.slice(1).forEach((r,i)=>{const _effLoc=getEffectiveLocation(r,i+2)||r[5]||"";if(r[2])inv[String(r[2]||"").toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:_effLoc,effLoc:_effLoc};if(r[5])invByLoc[String(r[5]||"").toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:_effLoc,effLoc:_effLoc,mpn:r[2]||""};
+if(_effLoc&&_effLoc!==r[5])invByLoc[String(_effLoc).toUpperCase()]={rowIdx:i+2,qty:parseInt(r[4])||0,location:_effLoc,effLoc:_effLoc,mpn:r[2]||""};
+    let totalParts=0,inStock=0,notEnough=0,notFound=0; bomPendingDispatch=[];
+    items.forEach(({pn,qty,qtyPerSet,sets,_row})=>{totalParts++;const key=pn.toUpperCase();const stock=inv[key]||invByLoc[key];if(!stock){notFound++;_row.__status="NOT IN INVENTORY";_row.__stock=0;_row.__needed=qty;_row.__shortage=qty;_row.__location="";}else if(stock.qty<qty){
+  notEnough++;_row.__status="NOT ENOUGH";_row.__stock=stock.qty;_row.__needed=qty;_row.__shortage=qty-stock.qty;_row.__location=stock.effLoc||stock.location||"";
+}else{
+  inStock++;bomPendingDispatch.push({pn,qty,rowIdx:stock.rowIdx,currentQty:stock.qty});_row.__status="IN STOCK";_row.__stock=stock.qty;_row.__needed=qty;_row.__shortage=0;_row.__location=stock.effLoc||stock.location||"";
+}});
     const allOk=notFound===0&&notEnough===0;
     document.getElementById("bomResults").innerHTML=`<div class="card"><div class="card-title">Check Complete${setsUsed?' <span style="font-size:11px;color:var(--muted);font-weight:400">(qty × sets)</span>':''}</div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted)">Status</th><th style="text-align:right;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted)">Parts</th></tr></thead><tbody><tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 12px;color:var(--text)">In Stock</td><td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--text)">${inStock}</td></tr><tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 12px;color:var(--text)">Not Enough</td><td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--text)">${notEnough}</td></tr><tr><td style="padding:9px 12px;color:var(--text)">Not Found</td><td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--text)">${notFound}</td></tr></tbody></table></div>`;
     if(bomPendingDispatch.length>0){document.getElementById("bomConfirmPanel").style.display="block";document.getElementById("bomConfirmSummary").innerHTML=`<b>${bomPendingDispatch.length}</b> part(s) can be deducted from stock:<br><span style="font-family:var(--mono);font-size:12px">${bomPendingDispatch.map(i=>`${i.pn} × ${i.qty}`).join("<br>")}</span>`;document.getElementById("bomConfirmStatus").style.display="none";}else{document.getElementById("bomConfirmPanel").style.display="none";}
@@ -2723,7 +2736,7 @@ sheetRows.slice(1).forEach((r,i)=>{const nexwahPn=getEffectiveLocation(r,i+2)||"
     document.getElementById("bomStatus").className="status-bar "+(allOk?"ok":"warn");
   }catch(e){document.getElementById("bomStatus").innerHTML="Error: "+e.message;document.getElementById("bomStatus").className="status-bar err";}
 }
-function exportBomReport(){if(!_bomOriginalRows.length){toast("No results to export.");return;}try{const wb=XLSX.utils.book_new();const exportHeaders=[..._bomOriginalHeaders,"Stock Status","Stock Available","Qty Needed","Shortage","Location"];const exportData=[exportHeaders];_bomOriginalRows.forEach(row=>{const vals=_bomOriginalHeaders.map(h=>row[h]||"");if(row.__status!==undefined){vals.push(row.__status,row.__stock,row.__needed,row.__shortage>0?row.__shortage:"",row.__location);}else{vals.push("","","","","");}exportData.push(vals);});const ws=XLSX.utils.aoa_to_sheet(exportData);XLSX.utils.book_append_sheet(wb,ws,"BOM Check");XLSX.writeFile(wb,"BOM_Check_"+todayStr()+".xlsx");toast("Report downloaded.");}catch(e){toast("Export failed: "+e.message);}}
+function exportBomReport(){if(!_bomOriginalRows.length){toast("No results to export.");return;}try{const wb=XLSX.utils.book_new();const exportHeaders=[..._bomOriginalHeaders,"Stock Status","Stock Available","Qty Needed","Shortage","Nexwah PN"];const exportData=[exportHeaders];_bomOriginalRows.forEach(row=>{const vals=_bomOriginalHeaders.map(h=>row[h]||"");if(row.__status!==undefined){vals.push(row.__status,row.__stock,row.__needed,row.__shortage>0?row.__shortage:"",row.__location);}else{vals.push("","","","","");}exportData.push(vals);});const ws=XLSX.utils.aoa_to_sheet(exportData);XLSX.utils.book_append_sheet(wb,ws,"BOM Check");XLSX.writeFile(wb,"BOM_Check_"+todayStr()+".xlsx");toast("Report downloaded.");}catch(e){toast("Export failed: "+e.message);}}
 async function confirmOrderDispatch(){const statusEl=document.getElementById("bomConfirmStatus");statusEl.style.display="block";statusEl.innerHTML='<span class="spinner"></span>Deducting stock…';statusEl.className="status-bar loading";const today=todayStr();try{for(const item of bomPendingDispatch){const newQty=item.currentQty-item.qty;await sheetUpdate(item.rowIdx,newQty,today);await sheetAppendTx([today,item.pn,"Order Check","Use",item.qty,item.currentQty,newQty,"Order dispatch"]);}statusEl.innerHTML=`Stock deducted for ${bomPendingDispatch.length} parts.`;statusEl.className="status-bar ok";toast("Order dispatched.");bomPendingDispatch=[];document.getElementById("bomConfirmPanel").style.display="none";}catch(e){statusEl.innerHTML="Error: "+e.message;statusEl.className="status-bar err";}}
 function cancelOrderDispatch(){document.getElementById("bomConfirmPanel").style.display="none";bomPendingDispatch=[];}
 function downloadSampleCSV(){downloadFile("sample_order_bom.csv","text/csv","Part Number,Quantity,Description\nSN74LVC1G08DCKR,100,IC Gate AND\nGRM188R71H104KA93D,500,Cap 100nF 50V\n");}
