@@ -238,7 +238,7 @@
   // No Web Bluetooth here (Safari, or a sandboxed preview)
   if(!('bluetooth' in navigator)){
     btn.disabled = true;
-    hint.textContent = 'This browser can’t use Bluetooth. Open this page in Chrome on Android, or Bluefy on iPhone.';
+    hint.textContent = 'This browser can\'t use Bluetooth. Open this page in Chrome on Android, or Bluefy on iPhone.';
     log('Web Bluetooth unavailable');
   }
 
@@ -251,10 +251,16 @@
     try{
       setChip('connecting', 'Connecting…');
       log('Scanning for RoomSensor');
+
+      // FIX: filter by name only — many firmware builds don't advertise
+      // the full 128-bit service UUID in scan packets, so the services
+      // filter returns no results. The service UUID is still declared in
+      // optionalServices so Chrome grants GATT access after pairing.
       device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE_UUID] }, { name: 'RoomSensor' }],
+        filters: [{ name: 'RoomSensor' }],
         optionalServices: [SERVICE_UUID]
       });
+
       device.addEventListener('gattserverdisconnected', onDisconnected);
 
       const server = await device.gatt.connect();
@@ -278,7 +284,7 @@
       if(/permission|blocked|secure/i.test(msg)){
         hint.textContent = 'Bluetooth was blocked. Open the downloaded file directly in Chrome, not inside another site.';
       }else{
-        hint.textContent = 'Couldn’t connect. Make sure the sensor is powered and advertising as RoomSensor.';
+        hint.textContent = 'Couldn\'t connect. Make sure the sensor is powered and advertising as RoomSensor.';
       }
       log('Connect failed');
     }
