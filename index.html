@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -15,23 +15,23 @@
     --faint:#9aa3b2;
     --line:#e8ecf2;
     --line-strong:#d7dde7;
- 
+
     --accent:#0e7490;
     --accent-ink:#0b5f78;
     --accent-soft:#e2f1f6;
- 
+
     --occ:#059669;        /* occupied */
     --occ-ink:#047857;
     --occ-soft:#ecfdf5;
     --occ-line:#b6ecd4;
- 
+
     --emp:#64748b;        /* empty */
     --emp-soft:#f1f5f9;
     --emp-line:#e3e8ef;
- 
+
     --amber:#b45309;
     --amber-soft:#fdf2e2;
- 
+
     --radius:20px;
     --radius-sm:13px;
     --shadow:0 1px 2px rgba(16,24,40,.04), 0 24px 48px -24px rgba(16,24,40,.28);
@@ -56,7 +56,7 @@
     box-shadow:var(--shadow);
     overflow:hidden;
   }
- 
+
   /* ── header ─────────────────────────── */
   .head{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -70,7 +70,7 @@
   }
   .brand h1{margin:0; font-size:16px; font-weight:600; letter-spacing:-.01em; line-height:1.15;}
   .brand p{margin:2px 0 0; font-size:11.5px; color:var(--faint); letter-spacing:.02em;}
- 
+
   .chip{
     display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
     font-size:12px; font-weight:600; color:var(--muted);
@@ -86,7 +86,7 @@
     70%{box-shadow:0 0 0 6px rgba(5,150,105,0);}
     100%{box-shadow:0 0 0 0 rgba(5,150,105,0);}
   }
- 
+
   /* ── status hero ────────────────────── */
   .hero{padding:34px 20px 30px; text-align:center; border-bottom:1px solid var(--line);}
   .dial{
@@ -101,20 +101,20 @@
   }
   .num{font-size:66px; font-weight:650; line-height:1; letter-spacing:-.03em; color:var(--faint); transition:color .35s ease;}
   .unit{margin-top:7px; font-size:10.5px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--faint);}
- 
+
   .state{font-size:23px; font-weight:650; letter-spacing:-.01em; color:var(--faint); transition:color .3s ease;}
   .sub{margin:7px 0 0; font-size:14px; color:var(--muted); min-height:1.2em;}
- 
+
   /* state theming */
   .hero[data-on="empty"] .dial{background:var(--emp-soft); border-color:var(--emp-line);}
   .hero[data-on="empty"] .num,
   .hero[data-on="empty"] .state{color:var(--emp);}
- 
+
   .hero[data-on="occupied"] .dial{background:var(--occ-soft); border-color:var(--occ-line);}
   .hero[data-on="occupied"] .dial::after{border-color:rgba(5,150,105,.22);}
   .hero[data-on="occupied"] .num,
   .hero[data-on="occupied"] .state{color:var(--occ);}
- 
+
   /* ── controls ───────────────────────── */
   .controls{padding:18px 20px 20px;}
   .btn{
@@ -131,7 +131,7 @@
   .btn.ghost{background:var(--surface); border-color:var(--line-strong); color:var(--ink);}
   .btn.ghost:hover{background:#fafbfc; border-color:var(--faint);}
   .hint{margin:11px 4px 0; font-size:12.5px; line-height:1.5; color:var(--muted); text-align:center;}
- 
+
   /* ── activity ───────────────────────── */
   .log{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -140,7 +140,7 @@
   }
   .log .msg{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .log .t{flex:none; font-variant-numeric:tabular-nums;}
- 
+
   @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }
 </style>
 </head>
@@ -166,7 +166,7 @@
         <span class="led"></span><span id="chipText">Disconnected</span>
       </span>
     </header>
- 
+
     <section class="hero" id="hero" data-on="off">
       <div class="dial">
         <div class="num" id="num">—</div>
@@ -175,36 +175,36 @@
       <div class="state" id="state">Not connected</div>
       <p class="sub" id="sub">Connect to start monitoring the room.</p>
     </section>
- 
+
     <section class="controls">
       <button class="btn" id="btn" type="button">Connect</button>
       <p class="hint" id="hint">Live room status updates over Bluetooth.</p>
     </section>
- 
+
     <footer class="log">
       <span class="msg" id="logMsg">Ready</span>
       <span class="t" id="logTime">—</span>
     </footer>
   </main>
- 
+
 <script>
   // Must match the RoomSensor firmware
   const SERVICE_UUID = '7f3e9a20-5c4b-4a1e-9d8f-2b6c1e4a7d90';
   const CHAR_UUID    = '7f3e9a21-5c4b-4a1e-9d8f-2b6c1e4a7d90';
- 
+
   const $ = id => document.getElementById(id);
   const chip=$('chip'), chipText=$('chipText'), hero=$('hero'),
         num=$('num'), state=$('state'), sub=$('sub'),
         btn=$('btn'), hint=$('hint'), logMsg=$('logMsg'), logTime=$('logTime');
- 
+
   let device = null;
- 
+
   function log(m){
     logMsg.textContent = m;
     logTime.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }
   function setChip(s, t){ chip.dataset.s = s; chipText.textContent = t; }
- 
+
   function showOffline(){
     hero.dataset.on = 'off';
     num.textContent = '—';
@@ -213,7 +213,7 @@
     btn.textContent = 'Connect';
     btn.classList.remove('ghost');
   }
- 
+
   function render(occupied, count){
     hero.dataset.on = occupied ? 'occupied' : 'empty';
     num.textContent = count;
@@ -226,7 +226,7 @@
     }
     log('Status updated');
   }
- 
+
   function applyValue(dataView){
     const txt = new TextDecoder().decode(dataView).trim();   // "OCCUPIED,2" or "EMPTY,0"
     const parts = txt.split(',');
@@ -234,19 +234,19 @@
     const count = parseInt(parts[1], 10) || 0;
     render(occupied, count);
   }
- 
+
   // No Web Bluetooth here (Safari, or a sandboxed preview)
   if(!('bluetooth' in navigator)){
     btn.disabled = true;
     hint.textContent = 'This browser can’t use Bluetooth. Open this page in Chrome on Android, or Bluefy on iPhone.';
     log('Web Bluetooth unavailable');
   }
- 
+
   btn.addEventListener('click', () => {
     if(device && device.gatt && device.gatt.connected) device.gatt.disconnect();
     else connect();
   });
- 
+
   async function connect(){
     try{
       setChip('connecting', 'Connecting…');
@@ -256,15 +256,15 @@
         optionalServices: [SERVICE_UUID]
       });
       device.addEventListener('gattserverdisconnected', onDisconnected);
- 
+
       const server = await device.gatt.connect();
       const service = await server.getPrimaryService(SERVICE_UUID);
       const characteristic = await service.getCharacteristic(CHAR_UUID);
- 
+
       applyValue(await characteristic.readValue());   // show current state at once
       await characteristic.startNotifications();
       characteristic.addEventListener('characteristicvaluechanged', e => applyValue(e.target.value));
- 
+
       setChip('connected', 'Connected');
       btn.textContent = 'Disconnect';
       btn.classList.add('ghost');
@@ -283,7 +283,7 @@
       log('Connect failed');
     }
   }
- 
+
   function onDisconnected(){
     setChip('disconnected', 'Disconnected');
     showOffline();
