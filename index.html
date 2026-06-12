@@ -85,35 +85,28 @@
     100%{box-shadow:0 0 0 0 rgba(22,163,74,0);}
   }
 
-  /* ── Status tiles ──────────────────────────────── */
-  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);}
-  .tile{background:var(--surface);padding:20px 18px 18px;}
-  .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:0 0 10px;}
-  .val{font-size:23px;font-weight:600;letter-spacing:-.015em;display:flex;align-items:center;gap:9px;line-height:1;}
-  .swatch{width:9px;height:9px;border-radius:50%;background:var(--line-strong);flex:none;}
-
-  .tile[data-on="null"] .swatch{opacity:.55;}
-  .tile[data-on="null"] .val{color:var(--faint);}
-  .tile[data-on="false"] .val{color:var(--slate);}
-  .tile[data-on="true"] .val{color:var(--ink);}
-  .tile[data-on="true"] .swatch{background:var(--green);}
-  .tile.ac[data-on="true"] .swatch{background:var(--teal);}
-
-  /* ── Mode strip ────────────────────────────────── */
-  .mode{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:13px 20px;font-size:13px;
-    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  /* ── Room status (single hero) ─────────────────── */
+  .status-card{
+    padding:34px 20px 32px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
   }
-  .mode .k{color:var(--muted);}
-  .tag{
-    font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-    padding:4px 10px;border-radius:7px;background:var(--slate-soft);color:var(--slate);
+  .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:0 0 14px;}
+  .room-val{
+    font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1;
+    display:inline-flex;align-items:center;gap:13px;
+    color:var(--faint);transition:color .3s ease;
   }
-  .mode[data-mode="auto"] .tag{background:var(--teal-soft);color:var(--teal-ink);}
-  .mode[data-mode="manual"] .tag{background:var(--amber-soft);color:var(--amber);}
+  .swatch{width:12px;height:12px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .3s ease,opacity .3s ease;}
+  .room-sub{margin:12px 0 0;font-size:13.5px;color:var(--muted);min-height:1.1em;}
 
-  /* ── Controls ──────────────────────────────────── */
+  .status-card[data-on="null"]  .room-val{color:var(--faint);}
+  .status-card[data-on="null"]  .swatch{opacity:.55;}
+  .status-card[data-on="false"] .room-val{color:var(--slate);}
+  .status-card[data-on="true"]  .room-val{color:var(--ink);}
+  .status-card[data-on="true"]  .swatch{background:var(--green);}
+
+  /* ── Action ────────────────────────────────────── */
   .controls{padding:16px 20px 20px;display:grid;gap:10px;}
   .btn{
     appearance:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
@@ -127,11 +120,6 @@
   .btn[disabled]{opacity:.45;cursor:not-allowed;}
   .btn-primary{background:var(--teal);border-color:var(--teal);color:#fff;}
   .btn-primary:hover{background:var(--teal-ink);border-color:var(--teal-ink);}
-
-  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-  .row3 .btn{padding:12px 8px;font-size:13.5px;}
-  .btn-on.is-active{border-color:var(--teal);color:var(--teal-ink);background:var(--teal-soft);}
-  .btn-off.is-active{border-color:var(--slate);color:var(--slate);background:var(--slate-soft);}
 
   .hint{font-size:12.5px;color:var(--muted);text-align:center;line-height:1.5;margin:3px 4px 0;}
 
@@ -150,7 +138,7 @@
 </style>
 </head>
 <body>
-  <main class="panel" role="application" aria-label="RoomSensor control">
+  <main class="panel" role="application" aria-label="RoomSensor occupancy monitor">
     <header class="head">
       <div class="brand">
         <div class="mark" aria-hidden="true">
@@ -164,7 +152,7 @@
         </div>
         <div>
           <h1>RoomSensor</h1>
-          <p>Smart AC control</p>
+          <p>Occupancy monitor</p>
         </div>
       </div>
       <span class="conn" id="conn" data-state="disconnected" role="status" aria-live="polite">
@@ -172,30 +160,15 @@
       </span>
     </header>
 
-    <section class="tiles">
-      <div class="tile room" id="roomTile" data-on="null">
-        <p class="eyebrow">Room</p>
-        <div class="val"><span class="swatch"></span><span id="roomVal">—</span></div>
-      </div>
-      <div class="tile ac" id="acTile" data-on="null">
-        <p class="eyebrow">Air conditioner</p>
-        <div class="val"><span class="swatch"></span><span id="acVal">—</span></div>
-      </div>
+    <section class="status-card" id="roomCard" data-on="null">
+      <p class="eyebrow">Room</p>
+      <div class="room-val"><span class="swatch"></span><span id="roomVal">—</span></div>
+      <p class="room-sub" id="roomSub"></p>
     </section>
-
-    <div class="mode" id="modeStrip" data-mode="unknown">
-      <span class="k">Control mode</span>
-      <span class="tag" id="modeTag">—</span>
-    </div>
 
     <section class="controls">
       <button class="btn btn-primary" id="connectBtn" type="button">Connect</button>
-      <div class="row3">
-        <button class="btn btn-on" id="onBtn" type="button" disabled>Turn on</button>
-        <button class="btn btn-off" id="offBtn" type="button" disabled>Turn off</button>
-        <button class="btn" id="autoBtn" type="button" disabled>Auto</button>
-      </div>
-      <p class="hint" id="hint">Connect to your RoomSensor to see live status.</p>
+      <p class="hint" id="hint">Connect to your RoomSensor to see live room status.</p>
     </section>
 
     <footer class="log">
@@ -205,33 +178,27 @@
   </main>
 
 <script>
-  // BLE contract — must match the ESP32 firmware exactly
+  // BLE contract — must match the sensor-only firmware
   const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
   const STATUS_UUID  = '12345678-1234-1234-1234-123456789ab1'; // notify → phone
-  const COMMAND_UUID = '12345678-1234-1234-1234-123456789ab2'; // write  ← phone
 
   const $ = (id) => document.getElementById(id);
   const conn = $('conn'), connText = $('connText');
-  const roomTile = $('roomTile'), roomVal = $('roomVal');
-  const acTile = $('acTile'), acVal = $('acVal');
-  const modeStrip = $('modeStrip'), modeTag = $('modeTag');
-  const connectBtn = $('connectBtn');
-  const onBtn = $('onBtn'), offBtn = $('offBtn'), autoBtn = $('autoBtn');
-  const hint = $('hint'), logMsg = $('logMsg'), logTime = $('logTime');
+  const roomCard = $('roomCard'), roomVal = $('roomVal'), roomSub = $('roomSub');
+  const connectBtn = $('connectBtn'), hint = $('hint');
+  const logMsg = $('logMsg'), logTime = $('logTime');
 
-  let device = null, server = null, cmdChar = null;
+  let device = null, server = null;
 
   function log(msg){
     logMsg.textContent = msg;
     logTime.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }
   function setConn(state, text){ conn.dataset.state = state; connText.textContent = text; }
-  function setControls(on){ onBtn.disabled = !on; offBtn.disabled = !on; autoBtn.disabled = !on; }
   function clearStatus(){
-    roomTile.dataset.on = 'null'; roomVal.textContent = '—';
-    acTile.dataset.on = 'null'; acVal.textContent = '—';
-    modeStrip.dataset.mode = 'unknown'; modeTag.textContent = '—';
-    onBtn.classList.remove('is-active'); offBtn.classList.remove('is-active');
+    roomCard.dataset.on = 'null';
+    roomVal.textContent = '—';
+    roomSub.textContent = '';
   }
 
   // Guard: no Web Bluetooth (e.g. Safari, or a sandboxed preview)
@@ -262,13 +229,10 @@
       await statusChar.startNotifications();
       statusChar.addEventListener('characteristicvaluechanged', onStatus);
 
-      cmdChar = await service.getCharacteristic(COMMAND_UUID);
-
       setConn('connected', 'Connected');
       connectBtn.textContent = 'Disconnect';
       connectBtn.classList.remove('btn-primary');
-      setControls(true);
-      hint.textContent = 'Live. Override with the buttons, or tap Auto to hand control back to the sensor.';
+      hint.textContent = 'Live. Watching the room for presence.';
       log('Connected to ' + (device.name || 'RoomSensor'));
     }catch(e){
       setConn('disconnected', 'Disconnected');
@@ -289,11 +253,10 @@
     setConn('disconnected', 'Disconnected');
     connectBtn.textContent = 'Connect';
     connectBtn.classList.add('btn-primary');
-    setControls(false);
     clearStatus();
     hint.textContent = 'Disconnected. Tap Connect to reconnect.';
     log('Disconnected');
-    server = null; cmdChar = null;
+    server = null;
   }
 
   function onStatus(event){
@@ -302,40 +265,17 @@
     catch{ log('Unreadable status frame'); return; }
 
     if(typeof d.occupied === 'boolean'){
-      roomTile.dataset.on = String(d.occupied);
+      roomCard.dataset.on = String(d.occupied);
       roomVal.textContent = d.occupied ? 'Occupied' : 'Empty';
-    }
-    if(typeof d.acOn === 'boolean'){
-      acTile.dataset.on = String(d.acOn);
-      acVal.textContent = d.acOn ? 'On' : 'Off';
-    }
-    if(d.mode){
-      modeStrip.dataset.mode = d.mode;     // "auto" or "manual"
-      modeTag.textContent = d.mode;
-      if(d.mode === 'manual'){
-        onBtn.classList.toggle('is-active', d.acOn === true);
-        offBtn.classList.toggle('is-active', d.acOn === false);
+      if(d.occupied){
+        const n = Number(d.persons) || 0;
+        roomSub.textContent = n > 0 ? (n + (n === 1 ? ' person' : ' people')) : 'Presence detected';
       }else{
-        onBtn.classList.remove('is-active');
-        offBtn.classList.remove('is-active');
+        roomSub.textContent = 'No presence detected';
       }
     }
     log('Status updated');
   }
-
-  async function send(cmd){
-    if(!cmdChar){ log('Not connected'); return; }
-    try{
-      await cmdChar.writeValue(new TextEncoder().encode(cmd));
-      log('Sent ' + cmd);
-    }catch(e){
-      log('Send failed: ' + ((e && e.message) || e));
-    }
-  }
-
-  onBtn.addEventListener('click', () => send('AC_ON'));
-  offBtn.addEventListener('click', () => send('AC_OFF'));
-  autoBtn.addEventListener('click', () => send('AUTO'));
 </script>
 </body>
 </html>
