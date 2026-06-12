@@ -2,279 +2,271 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="color-scheme" content="light">
-<meta name="theme-color" content="#0d9488">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>RoomSensor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sensor · occupancy monitor</title>
 <style>
   :root{
-    --canvas:#eef1f5;
-    --surface:#ffffff;
-    --ink:#0f172a;
-    --muted:#64748b;
-    --faint:#94a3b8;
-    --line:#e6eaf0;
-    --line-strong:#d3dae3;
-    --teal:#0d9488;
-    --teal-ink:#0b7c72;
-    --teal-soft:#d6f0ec;
-    --green:#16a34a;
-    --green-soft:#dcfce7;
-    --amber:#b45309;
-    --amber-soft:#fdf0d5;
-    --slate:#475569;
-    --slate-soft:#eef2f6;
-    --radius:18px;
-    --radius-sm:12px;
-    --shadow:0 1px 2px rgba(15,23,42,.05), 0 18px 40px -20px rgba(15,23,42,.30);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --ink: #e8edf5;
+    --muted: #7e8ca6;
+    --line: rgba(135,155,185,.18);
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;}
+  *{ box-sizing:border-box; }
   body{
-    background:var(--canvas);
-    color:var(--ink);
-    min-height:100dvh;
-    display:flex;
-    align-items:flex-start;
-    justify-content:center;
-    padding:30px 18px calc(30px + env(safe-area-inset-bottom));
+    margin:0; min-height:100dvh; color:var(--ink);
+    font-family:var(--sans);
+    background: radial-gradient(1100px 760px at 50% -12%, #142036, #070a12 62%);
     -webkit-font-smoothing:antialiased;
-    font-feature-settings:"tnum" 1;
+    display:flex; flex-direction:column;
   }
 
-  .panel{
-    width:100%;
-    max-width:412px;
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow);
+  /* ---- top bar ---- */
+  .bar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; padding:18px 22px; border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand-name{ font-weight:800; letter-spacing:.02em; font-size:18px; }
+  .brand-sub{ font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--muted); }
+  .conn{ display:flex; align-items:center; gap:12px; }
+  .conn-label{ font-size:12.5px; color:var(--muted); min-width:92px; text-align:right; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:#5b6b82; transition:.2s; }
+  .dot.connected{ background:#34d399; box-shadow:0 0 10px #34d399; }
+  .dot.connecting{ background:#f9a826; box-shadow:0 0 10px #f9a826; animation:soft 1s ease-in-out infinite; }
+  @keyframes soft{ 50%{ opacity:.4; } }
+  .btn{
+    border:1px solid rgba(150,170,200,.32); background:rgba(255,255,255,.05);
+    color:var(--ink); padding:9px 18px; border-radius:999px;
+    font:600 13px var(--sans); cursor:pointer; transition:.15s;
+  }
+  .btn:hover{ background:rgba(255,255,255,.1); border-color:rgba(150,170,200,.6); }
+  .btn:focus-visible{ outline:2px solid #2dd4bf; outline-offset:2px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  /* ---- stage ---- */
+  .stage{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+          gap:26px; padding:34px 20px; text-align:center; }
+
+  .scope{
+    position:relative; width:min(74vw,358px); aspect-ratio:1; border-radius:50%;
+    background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 68%), #090e18;
+    border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    box-shadow: inset 0 0 70px rgba(0,0,0,.65), 0 0 50px color-mix(in srgb, var(--accent) 16%, transparent);
+    --accent:#5b6b82; transition: box-shadow .4s, border-color .4s;
     overflow:hidden;
   }
+  /* concentric rings */
+  .scope::before{
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background: repeating-radial-gradient(circle at center,
+      transparent 0 13.5%,
+      color-mix(in srgb, var(--accent) 24%, transparent) 13.5% 13.9%);
+    opacity:.55;
+  }
+  /* crosshair */
+  .scope::after{
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background:
+      linear-gradient(90deg, transparent calc(50% - .5px), color-mix(in srgb, var(--accent) 22%, transparent) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+      linear-gradient(0deg,  transparent calc(50% - .5px), color-mix(in srgb, var(--accent) 22%, transparent) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px));
+    opacity:.4;
+  }
+  .sweep{
+    position:absolute; inset:0; border-radius:50%;
+    background: conic-gradient(from 0deg,
+      color-mix(in srgb, var(--accent) 42%, transparent) 0deg,
+      transparent 70deg, transparent 360deg);
+    animation: sweep 4.2s linear infinite; mix-blend-mode:screen;
+  }
+  @keyframes sweep{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){ .sweep{ animation:none; opacity:.22; } }
 
-  /* ── Header ─────────────────────────────────────── */
-  .head{
-    display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding:18px 20px;
-    border-bottom:1px solid var(--line);
+  .blips{ position:absolute; inset:0; }
+  .blip{
+    position:absolute; width:15px; height:15px; border-radius:50%;
+    transform:translate(-50%,-50%);
+    background: var(--accent);
+    box-shadow: 0 0 14px var(--accent), inset 0 0 4px rgba(255,255,255,.85);
+    animation: ping 1.9s ease-in-out infinite;
   }
-  .brand{display:flex;align-items:center;gap:12px;}
-  .mark{
-    width:36px;height:36px;border-radius:10px;
-    background:var(--teal-soft);color:var(--teal-ink);
-    display:grid;place-items:center;flex:none;
-  }
-  .brand h1{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em;line-height:1.1;}
-  .brand p{font-size:11.5px;color:var(--faint);margin:2px 0 0;letter-spacing:.02em;}
+  @keyframes ping{ 0%,100%{ transform:translate(-50%,-50%) scale(1); opacity:.95; }
+                   50%{ transform:translate(-50%,-50%) scale(1.18); opacity:.6; } }
+  @media (prefers-reduced-motion: reduce){ .blip{ animation:none; } }
 
-  .conn{
-    display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
-    font-size:12px;font-weight:600;color:var(--muted);
-    padding:6px 12px 6px 10px;border-radius:999px;background:var(--slate-soft);
-  }
-  .conn .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none;}
-  .conn[data-state="connected"]{color:var(--green);background:var(--green-soft);}
-  .conn[data-state="connected"] .dot{background:var(--green);animation:pulse 2.2s infinite;}
-  .conn[data-state="connecting"]{color:var(--amber);background:var(--amber-soft);}
-  .conn[data-state="connecting"] .dot{background:var(--amber);}
-  @keyframes pulse{
-    0%{box-shadow:0 0 0 0 rgba(22,163,74,.45);}
-    70%{box-shadow:0 0 0 6px rgba(22,163,74,0);}
-    100%{box-shadow:0 0 0 0 rgba(22,163,74,0);}
-  }
+  .readout{ position:absolute; inset:0; display:grid; place-content:center; pointer-events:none; }
+  .count{ font:700 clamp(52px,17vw,86px)/1 var(--mono); letter-spacing:-.03em;
+          text-shadow:0 0 24px color-mix(in srgb, var(--accent) 30%, transparent); }
+  .count-label{ margin-top:8px; font:600 10.5px/1 var(--sans); letter-spacing:.26em;
+                text-transform:uppercase; color:var(--muted); }
 
-  /* ── Room status (single hero) ─────────────────── */
-  .status-card{
-    padding:34px 20px 32px;
-    text-align:center;
-    border-bottom:1px solid var(--line);
-  }
-  .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:0 0 14px;}
-  .room-val{
-    font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1;
-    display:inline-flex;align-items:center;gap:13px;
-    color:var(--faint);transition:color .3s ease;
-  }
-  .swatch{width:12px;height:12px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .3s ease,opacity .3s ease;}
-  .room-sub{margin:12px 0 0;font-size:13.5px;color:var(--muted);min-height:1.1em;}
+  .state{ font:800 clamp(22px,6.5vw,34px)/1 var(--sans); letter-spacing:.05em; transition:color .3s; }
+  .scope.off,      .state.off{ --accent:#5b6b82; color:#8294ae; }
+  .scope.empty,    .state.empty{ --accent:#2dd4bf; }
+  .state.empty{ color:#2dd4bf; }
+  .scope.occupied, .state.occupied{ --accent:#f9a826; }
+  .state.occupied{ color:#f9a826; }
 
-  .status-card[data-on="null"]  .room-val{color:var(--faint);}
-  .status-card[data-on="null"]  .swatch{opacity:.55;}
-  .status-card[data-on="false"] .room-val{color:var(--slate);}
-  .status-card[data-on="true"]  .room-val{color:var(--ink);}
-  .status-card[data-on="true"]  .swatch{background:var(--green);}
+  .meta{ font-size:12.5px; color:var(--muted); min-height:18px; }
 
-  /* ── Action ────────────────────────────────────── */
-  .controls{padding:16px 20px 20px;display:grid;gap:10px;}
-  .btn{
-    appearance:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
-    font:inherit;font-weight:600;font-size:15px;padding:13px 16px;border-radius:var(--radius-sm);
-    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;
-    transition:transform .04s ease,background .15s ease,border-color .15s ease,color .15s ease,opacity .15s ease;
-    -webkit-tap-highlight-color:transparent;
+  /* ---- footer / hints ---- */
+  .foot{ padding:14px 22px; border-top:1px solid var(--line); font-size:11.5px;
+         color:var(--muted); display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+  .foot code{ font-family:var(--mono); color:#9fb0c8; }
+  .notice{
+    margin:0 20px 20px; padding:13px 16px; border-radius:12px;
+    border:1px solid rgba(249,166,38,.35); background:rgba(249,166,38,.07);
+    color:#f6c879; font-size:13px; line-height:1.5; display:none;
   }
-  .btn:active{transform:scale(.985);}
-  .btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
-  .btn[disabled]{opacity:.45;cursor:not-allowed;}
-  .btn-primary{background:var(--teal);border-color:var(--teal);color:#fff;}
-  .btn-primary:hover{background:var(--teal-ink);border-color:var(--teal-ink);}
-
-  .hint{font-size:12.5px;color:var(--muted);text-align:center;line-height:1.5;margin:3px 4px 0;}
-
-  /* ── Activity ──────────────────────────────────── */
-  .log{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
-    border-top:1px solid var(--line);padding:11px 20px 13px;
-    font-size:11.5px;color:var(--faint);
-  }
-  .log .msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .log .time{font-variant-numeric:tabular-nums;flex:none;}
-
-  @media (prefers-reduced-motion:reduce){
-    *{animation:none !important;transition:none !important;}
-  }
+  .notice.show{ display:block; }
+  .notice b{ color:#fbd9a0; }
 </style>
 </head>
 <body>
-  <main class="panel" role="application" aria-label="RoomSensor occupancy monitor">
-    <header class="head">
-      <div class="brand">
-        <div class="mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-            <path d="M8.6 15.4a5 5 0 0 1 0-6.8"/>
-            <path d="M15.4 8.6a5 5 0 0 1 0 6.8"/>
-            <path d="M6 18a9 9 0 0 1 0-12"/>
-            <path d="M18 6a9 9 0 0 1 0 12"/>
-          </svg>
-        </div>
-        <div>
-          <h1>RoomSensor</h1>
-          <p>Occupancy monitor</p>
-        </div>
+  <header class="bar">
+    <div class="brand">
+      <span class="brand-name">sensor</span>
+      <span class="brand-sub">occupancy monitor</span>
+    </div>
+    <div class="conn">
+      <span class="dot off" id="dot"></span>
+      <span class="conn-label" id="connLabel">Disconnected</span>
+      <button class="btn" id="connectBtn">Connect</button>
+    </div>
+  </header>
+
+  <div class="notice" id="notice"></div>
+
+  <main class="stage">
+    <div class="scope off" id="scope">
+      <div class="sweep"></div>
+      <div class="blips" id="blips"></div>
+      <div class="readout">
+        <div class="count" id="count">--</div>
+        <div class="count-label">persons</div>
       </div>
-      <span class="conn" id="conn" data-state="disconnected" role="status" aria-live="polite">
-        <span class="dot"></span><span id="connText">Disconnected</span>
-      </span>
-    </header>
-
-    <section class="status-card" id="roomCard" data-on="null">
-      <p class="eyebrow">Room</p>
-      <div class="room-val"><span class="swatch"></span><span id="roomVal">—</span></div>
-      <p class="room-sub" id="roomSub"></p>
-    </section>
-
-    <section class="controls">
-      <button class="btn btn-primary" id="connectBtn" type="button">Connect</button>
-      <p class="hint" id="hint">Connect to your RoomSensor to see live room status.</p>
-    </section>
-
-    <footer class="log">
-      <span class="msg" id="logMsg">Ready</span>
-      <span class="time" id="logTime">—</span>
-    </footer>
+    </div>
+    <div class="state off" id="state">Not connected</div>
+    <div class="meta" id="meta">Open in Chrome, then connect to your device</div>
   </main>
 
+  <footer class="foot">
+    <span>Device <code>Sensor_Occupancy</code></span>
+    <span>Value <code>OCCUPIED,n</code> / <code>EMPTY,0</code></span>
+  </footer>
+
 <script>
-  // BLE contract — must match the sensor-only firmware
-  const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
-  const STATUS_UUID  = '12345678-1234-1234-1234-123456789ab1'; // notify → phone
+  const SERVICE_UUID = 'd2f7a1c3-9e84-4b12-a6f0-1c3e5d7b9f20';
+  const CHAR_UUID    = 'e8b3c2d4-7f15-4a26-b9c1-2d4f6a8b0c1e';
 
-  const $ = (id) => document.getElementById(id);
-  const conn = $('conn'), connText = $('connText');
-  const roomCard = $('roomCard'), roomVal = $('roomVal'), roomSub = $('roomSub');
-  const connectBtn = $('connectBtn'), hint = $('hint');
-  const logMsg = $('logMsg'), logTime = $('logTime');
+  const el = id => document.getElementById(id);
+  let device = null, characteristic = null;
 
-  let device = null, server = null;
-
-  function log(msg){
-    logMsg.textContent = msg;
-    logTime.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-  }
-  function setConn(state, text){ conn.dataset.state = state; connText.textContent = text; }
-  function clearStatus(){
-    roomCard.dataset.on = 'null';
-    roomVal.textContent = '—';
-    roomSub.textContent = '';
+  function setConn(stateName, label){
+    el('dot').className = 'dot ' + stateName;
+    el('connLabel').textContent = label;
   }
 
-  // Guard: no Web Bluetooth (e.g. Safari, or a sandboxed preview)
-  if(!('bluetooth' in navigator)){
-    connectBtn.disabled = true;
-    hint.textContent = 'This browser can’t use Bluetooth. Open this page in Bluefy on iPhone, or Chrome on Android.';
-    log('Web Bluetooth unavailable');
+  function notice(html){
+    const n = el('notice');
+    if(!html){ n.classList.remove('show'); n.innerHTML=''; return; }
+    n.innerHTML = html; n.classList.add('show');
   }
 
-  connectBtn.addEventListener('click', () => {
-    if(server && server.connected){ disconnect(); } else { connect(); }
-  });
+  function setOffline(){
+    const s = el('scope'), st = el('state');
+    s.className = 'scope off'; st.className = 'state off';
+    st.textContent = 'Disconnected';
+    el('count').textContent = '--';
+    el('blips').innerHTML = '';
+    el('meta').textContent = 'Open in Chrome, then connect to your device';
+    el('connectBtn').textContent = 'Connect';
+  }
 
-  async function connect(){
-    try{
-      setConn('connecting', 'Connecting…');
-      log('Scanning for RoomSensor');
-      device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE_UUID] }, { name: 'RoomSensor' }],
-        optionalServices: [SERVICE_UUID]
-      });
-      device.addEventListener('gattserverdisconnected', onDisconnected);
+  function render(state, count){
+    const occupied = state === 'OCCUPIED' && count >= 1;
+    const s = el('scope'), st = el('state');
+    s.className  = 'scope ' + (occupied ? 'occupied' : 'empty');
+    st.className = 'state ' + (occupied ? 'occupied' : 'empty');
+    st.textContent = occupied ? 'OCCUPIED' : 'EMPTY';
+    el('count').textContent = count;
+    renderBlips(count);
+    el('meta').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  }
 
-      server = await device.gatt.connect();
-      const service = await server.getPrimaryService(SERVICE_UUID);
-
-      const statusChar = await service.getCharacteristic(STATUS_UUID);
-      await statusChar.startNotifications();
-      statusChar.addEventListener('characteristicvaluechanged', onStatus);
-
-      setConn('connected', 'Connected');
-      connectBtn.textContent = 'Disconnect';
-      connectBtn.classList.remove('btn-primary');
-      hint.textContent = 'Live. Watching the room for presence.';
-      log('Connected to ' + (device.name || 'RoomSensor'));
-    }catch(e){
-      setConn('disconnected', 'Disconnected');
-      if(e && e.name === 'NotFoundError'){
-        log('No device selected');
-      }else{
-        log('Connect failed: ' + ((e && e.message) || e));
-        hint.textContent = 'Couldn’t connect. Make sure the ESP32 is powered and advertising as RoomSensor.';
-      }
+  function renderBlips(n){
+    const box = el('blips'); box.innerHTML = '';
+    const W = box.clientWidth, R = W/2;
+    for(let i=0;i<n;i++){
+      const ang = i * 137.5 * Math.PI/180;                 // golden-angle spread, stable per index
+      const rad = R * 0.62 * Math.sqrt((i + 0.6) / Math.max(n,6));
+      const x = R + rad * Math.cos(ang);
+      const y = R + rad * Math.sin(ang);
+      const b = document.createElement('div');
+      b.className = 'blip';
+      b.style.left = (x / W * 100) + '%';
+      b.style.top  = (y / W * 100) + '%';
+      b.style.animationDelay = (i * 0.12) + 's';
+      box.appendChild(b);
     }
   }
 
-  function disconnect(){
-    if(device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+  function handleValue(dataView){
+    const text = new TextDecoder().decode(dataView).trim();   // "OCCUPIED,2" or "EMPTY,0"
+    const parts = text.split(',');
+    const state = (parts[0] || '').toUpperCase();
+    const count = parseInt(parts[1], 10) || 0;
+    render(state, count);
+  }
+
+  async function connect(){
+    notice('');
+    if(!navigator.bluetooth){
+      notice('This browser has no Web Bluetooth. Open this page in <b>Chrome or Edge</b> on desktop or Android. It does not work in Safari or on iPhone/iPad.');
+      return;
+    }
+    try{
+      setConn('connecting', 'Connecting…');
+      device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      characteristic = await service.getCharacteristic(CHAR_UUID);
+
+      handleValue(await characteristic.readValue());            // show current state right away
+      await characteristic.startNotifications();
+      characteristic.addEventListener('characteristicvaluechanged', e => handleValue(e.target.value));
+
+      setConn('connected', device.name || 'Connected');
+      el('connectBtn').textContent = 'Disconnect';
+    }catch(err){
+      setConn('off', 'Disconnected');
+      setOffline();
+      const msg = (err && err.message) ? err.message : String(err);
+      if(/cancel/i.test(msg)) return;                           // user closed the chooser
+      if(/permission|blocked|secure/i.test(msg)){
+        notice('Bluetooth was blocked here. This usually means the page is sandboxed — <b>download this file and open it directly in Chrome</b> rather than running it inside another site.');
+      }else{
+        notice('Couldn’t connect: ' + msg);
+      }
+    }
   }
 
   function onDisconnected(){
-    setConn('disconnected', 'Disconnected');
-    connectBtn.textContent = 'Connect';
-    connectBtn.classList.add('btn-primary');
-    clearStatus();
-    hint.textContent = 'Disconnected. Tap Connect to reconnect.';
-    log('Disconnected');
-    server = null;
+    setConn('off', 'Disconnected');
+    setOffline();
   }
 
-  function onStatus(event){
-    let d;
-    try{ d = JSON.parse(new TextDecoder().decode(event.target.value)); }
-    catch{ log('Unreadable status frame'); return; }
+  el('connectBtn').addEventListener('click', () => {
+    if(device && device.gatt && device.gatt.connected){ device.gatt.disconnect(); }
+    else { connect(); }
+  });
 
-    if(typeof d.occupied === 'boolean'){
-      roomCard.dataset.on = String(d.occupied);
-      roomVal.textContent = d.occupied ? 'Occupied' : 'Empty';
-      if(d.occupied){
-        const n = Number(d.persons) || 0;
-        roomSub.textContent = n > 0 ? (n + (n === 1 ? ' person' : ' people')) : 'Presence detected';
-      }else{
-        roomSub.textContent = 'No presence detected';
-      }
-    }
-    log('Status updated');
+  // Heads-up before the user even taps Connect, if the browser can't do it.
+  if(!navigator.bluetooth){
+    el('connectBtn').disabled = true;
+    notice('This browser has no Web Bluetooth. Open this page in <b>Chrome or Edge</b> on desktop or Android — not Safari, and not on iPhone/iPad.');
   }
 </script>
 </body>
