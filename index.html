@@ -77,6 +77,17 @@
  
   .status{font-size:12.5px; color:var(--muted); text-align:center; line-height:1.5; margin:2px 0 0}
   .status:empty{display:none}
+ 
+  /* pairing */
+  .pair-row{display:flex; align-items:center; gap:12px; padding:16px 18px}
+  .pair-btn{font-family:inherit; font-size:14px; font-weight:600; color:var(--accent);
+            background:var(--accent-soft); border:1px solid transparent; border-radius:12px;
+            padding:11px 16px; cursor:pointer; white-space:nowrap; transition:.16s}
+  .pair-btn:active{transform:translateY(1px)}
+  .pair-btn:disabled{opacity:.45; cursor:not-allowed}
+  .pair-btn.busy{background:var(--accent); color:#fff}
+  .pair-msg{font-size:12.5px; color:var(--muted); line-height:1.45}
+  .pair-msg b{color:var(--ink); font-weight:600}
 </style>
 </head>
 <body>
@@ -115,6 +126,16 @@
     </div>
   </div>
  
+  <div class="seg-wrap">
+    <p class="seg-label">Remote</p>
+    <div class="card">
+      <div class="pair-row">
+        <button id="pairBtn" class="pair-btn" disabled>Pair remote</button>
+        <div id="pairMsg" class="pair-msg">Pair the controller with your AC remote.</div>
+      </div>
+    </div>
+  </div>
+ 
   <button id="connectBtn" class="connect">Connect</button>
   <p class="status" id="status"></p>
  
@@ -140,12 +161,14 @@ function setConn(connected){
   $("connectBtn").textContent = connected ? "Disconnect" : "Connect";
   $("connectBtn").classList.toggle("linked", connected);
   segBtns.forEach(b => b.disabled = !connected);
+  $("pairBtn").disabled = !connected;
   if(!connected){
     $("acState").textContent="—"; $("acState").className="state off";
     $("glyph").classList.remove("live");
     $("roomState").textContent="—"; $("roomMeta").textContent="Waiting for sensor";
     $("roomInd").className="ind";
     setSeg(null);
+    setPair("idle");
   }
 }
  
@@ -158,9 +181,32 @@ function renderRoom(text){
   $("roomInd").className = "ind " + (occ ? "occ" : "");
 }
  
+function setPair(stateOrMsg){
+  const btn = $("pairBtn"), msg = $("pairMsg");
+  switch(stateOrMsg){
+    case "waiting":
+      btn.classList.add("busy"); btn.disabled = true; btn.textContent = "Pairing…";
+      msg.innerHTML = "Point your AC remote at the device and press <b>Power, Temp, Mode, or Fan</b>.";
+      break;
+    case "ok":
+      btn.classList.remove("busy"); btn.disabled = false; btn.textContent = "Pair remote";
+      msg.innerHTML = "<b>Paired.</b> The controller can now operate your AC.";
+      break;
+    case "failed":
+      btn.classList.remove("busy"); btn.disabled = false; btn.textContent = "Pair remote";
+      msg.innerHTML = "Pairing didn&#39;t complete — tap <b>Pair remote</b> and try again.";
+      break;
+    default: // idle
+      btn.classList.remove("busy"); btn.disabled = !(device && device.gatt.connected);
+      btn.textContent = "Pair remote";
+      msg.textContent = "Pair the controller with your AC remote.";
+  }
+}
+ 
 function renderAc(jsonText){
   try{
     const d = JSON.parse(jsonText);
+    if(d.pairing){ setPair(d.pairing); return; }   // pairing progress update
     $("acState").textContent = d.acOn ? "On" : "Off";
     $("acState").className = "state " + (d.acOn ? "on" : "off");
     $("glyph").classList.toggle("live", d.acOn);
@@ -208,6 +254,7 @@ $("connectBtn").addEventListener("click", () => {
   else connect();
 });
 segBtns.forEach(b => b.addEventListener("click", () => send(b.dataset.cmd)));
+$("pairBtn").addEventListener("click", () => { setPair("waiting"); send("PAIR"); });
  
 if(!navigator.bluetooth){
   setStatus("This browser has no Web Bluetooth. Use Bluefy on iOS or Chrome on Android.");
