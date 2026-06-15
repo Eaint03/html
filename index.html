@@ -6,105 +6,114 @@
 <title>sensor · room control</title>
 <style>
   :root{
-    --bg:#0e1620; --panel:#162231; --line:#26384c;
-    --ink:#e8eef5; --muted:#7e93a8;
-    --ice:#46c6e6;            /* AC / cool */
-    --warm:#f2a13c;           /* occupied  */
-    --ok:#3ad29f; --bad:#ef5f6b;
-    --r:18px;
+    --bg:#0f141a; --card:#181f27; --line:#262f3a; --line-soft:#1f2730;
+    --ink:#e6ebf0; --muted:#8593a0; --faint:#5b6878;
+    --accent:#5096e8;
+    --occ:#e0a458; --ok:#43c59e; --bad:#e06070;
+    --r:16px;
   }
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
     background:var(--bg); color:var(--ink); min-height:100dvh;
-    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    padding:24px 18px calc(24px + env(safe-area-inset-bottom));
-    display:flex; flex-direction:column; gap:18px; max-width:440px; margin:0 auto;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:32px 20px calc(32px + env(safe-area-inset-bottom));
+    max-width:420px; margin:0 auto;
+    display:flex; flex-direction:column; gap:22px;
   }
-  header{display:flex; align-items:baseline; justify-content:space-between}
-  h1{font-size:20px; letter-spacing:.5px; margin:0; font-weight:700}
-  h1 small{color:var(--muted); font-weight:500; letter-spacing:.3px}
-  .dot{display:inline-block; width:9px; height:9px; border-radius:50%;
-       background:var(--bad); margin-right:7px; vertical-align:middle;
-       box-shadow:0 0 0 0 rgba(58,210,159,.6)}
-  .dot.on{background:var(--ok); animation:pulse 2s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,210,159,.5)}70%{box-shadow:0 0 0 8px rgba(58,210,159,0)}100%{box-shadow:0 0 0 0 rgba(58,210,159,0)}}
-  .conn{font-size:13px; color:var(--muted)}
 
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:20px}
-  .label{font-size:12px; text-transform:uppercase; letter-spacing:1.4px; color:var(--muted); margin:0 0 10px}
+  header{display:flex; align-items:center; justify-content:space-between}
+  .brand{display:flex; flex-direction:column; gap:3px}
+  h1{font-size:19px; font-weight:650; letter-spacing:-.2px; margin:0}
+  .brand span{font-size:12px; color:var(--faint); letter-spacing:.4px}
+  .conn{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted)}
+  .conn .dot{width:8px; height:8px; border-radius:50%; background:var(--bad); transition:.25s}
+  .conn .dot.on{background:var(--ok)}
 
-  /* room state */
-  .room{display:flex; align-items:center; gap:16px}
-  .room .ring{width:64px; height:64px; border-radius:50%; flex:0 0 auto;
-    border:3px solid var(--line); display:grid; place-items:center; transition:.3s}
-  .room.occupied .ring{border-color:var(--warm); box-shadow:0 0 24px -6px var(--warm)}
-  .room.empty .ring{border-color:var(--line)}
-  .room .big{font-size:22px; font-weight:700; line-height:1.1}
-  .room .sub{font-size:13px; color:var(--muted); margin-top:3px}
-  .room .ring span{font-size:24px}
-
-  /* ac state */
-  .ac{display:flex; align-items:center; justify-content:space-between}
-  .ac .state{font-size:26px; font-weight:700}
-  .ac .state.on{color:var(--ice)}
-  .ac .state.off{color:var(--muted)}
-  .mode{font-size:12px; padding:5px 11px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
-  .mode.manual{color:var(--warm); border-color:var(--warm)}
-  .mode.auto{color:var(--ice); border-color:var(--ice)}
-
-  .controls{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-  button{font-family:inherit; font-size:15px; font-weight:600; color:var(--ink);
-    background:#1b2a3c; border:1px solid var(--line); border-radius:14px;
-    padding:16px 12px; cursor:pointer; transition:.15s; -webkit-tap-highlight-color:transparent}
+  button{font-family:inherit; cursor:pointer; transition:.14s ease; -webkit-tap-highlight-color:transparent}
   button:active{transform:translateY(1px)}
-  button:disabled{opacity:.4; cursor:not-allowed}
-  button.primary{grid-column:1 / -1; background:var(--ice); color:#06222c; border-color:transparent}
-  button.on{border-color:var(--ice); color:var(--ice)}
-  button.off{border-color:var(--muted)}
-  button.auto{grid-column:1 / -1; border-color:var(--warm); color:var(--warm)}
+  button:disabled{opacity:.38; cursor:not-allowed; transform:none}
 
-  .note{font-size:12.5px; color:var(--muted); line-height:1.5; text-align:center}
-  .note b{color:var(--ink); font-weight:600}
+  .connect{
+    width:100%; font-size:15px; font-weight:600; color:#08243f;
+    background:var(--accent); border:none; border-radius:var(--r); padding:15px;
+  }
+  .connect.linked{background:transparent; color:var(--muted); border:1px solid var(--line)}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+
+  .row{display:flex; align-items:center; justify-content:space-between; padding:18px 18px}
+  .row + .row{border-top:1px solid var(--line-soft)}
+  .row .k{font-size:13px; color:var(--muted)}
+  .row .v{display:flex; align-items:center; gap:10px; text-align:right}
+  .row .v .main{font-size:16px; font-weight:600}
+  .row .v .meta{font-size:12px; color:var(--faint)}
+
+  .pin{width:9px; height:9px; border-radius:50%; background:var(--line); flex:0 0 auto}
+  .pin.occ{background:var(--occ)}
+  .pin.empty{background:var(--faint)}
+
+  .acval.on{color:var(--accent)}
+  .acval.off{color:var(--muted)}
+  .tag{font-size:11px; font-weight:600; letter-spacing:.3px; padding:4px 9px; border-radius:999px;
+       border:1px solid var(--line); color:var(--muted); text-transform:capitalize}
+  .tag.manual{color:var(--occ); border-color:rgba(224,164,88,.4)}
+  .tag.auto{color:var(--accent); border-color:rgba(80,150,232,.4)}
+
+  .section-label{font-size:11px; text-transform:uppercase; letter-spacing:1.2px;
+                 color:var(--faint); margin:0 0 -8px 4px}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .ctrl{font-size:14.5px; font-weight:600; color:var(--ink);
+        background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px 12px}
+  .ctrl.full{grid-column:1 / -1}
+  .ctrl.on:not(:disabled){border-color:rgba(80,150,232,.5)}
+  .ctrl.auto:not(:disabled){color:var(--muted)}
+
+  .status{font-size:12.5px; color:var(--muted); text-align:center; line-height:1.5; margin:0}
+  .status:empty{display:none}
 </style>
 </head>
 <body>
   <header>
-    <h1>sensr <small>· room control</small></h1>
-    <div class="conn"><span id="dot" class="dot"></span><span id="connTxt">Not connected</span></div>
+    <div class="brand">
+      <h1>sensor</h1>
+      <span>Room control</span>
+    </div>
+    <div class="conn"><span id="dot" class="dot"></span><span id="connTxt">Offline</span></div>
   </header>
 
-  <button id="connectBtn" class="primary">Connect to RoomSensor</button>
+  <button id="connectBtn" class="connect">Connect</button>
 
-  <section class="panel">
-    <p class="label">Room</p>
-    <div id="room" class="room empty">
-      <div class="ring"><span id="roomIcon">·</span></div>
-      <div>
-        <div id="roomState" class="big">—</div>
-        <div id="roomSub" class="sub">Waiting for sensor</div>
+  <div class="card">
+    <div class="row">
+      <div class="k">Room</div>
+      <div class="v">
+        <div>
+          <div id="roomState" class="main">—</div>
+          <div id="roomMeta" class="meta"></div>
+        </div>
+        <span id="roomPin" class="pin"></span>
       </div>
     </div>
-  </section>
-
-  <section class="panel">
-    <p class="label">Air conditioner</p>
-    <div class="ac">
-      <div id="acState" class="state off">—</div>
-      <div id="modeTag" class="mode auto">auto</div>
+    <div class="row">
+      <div class="k">Air conditioner</div>
+      <div class="v">
+        <div id="acState" class="main acval off">—</div>
+        <span id="modeTag" class="tag auto">auto</span>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <section class="panel">
-    <p class="label">Override</p>
-    <div class="controls">
-      <button id="onBtn"   class="on"   disabled>Turn AC on</button>
-      <button id="offBtn"  class="off"  disabled>Turn AC off</button>
-      <button id="autoBtn" class="auto" disabled>Back to auto</button>
-    </div>
-  </section>
+  <p class="section-label">Override</p>
+  <div class="grid">
+    <button id="onBtn"   class="ctrl on"   disabled>Turn on</button>
+    <button id="offBtn"  class="ctrl off"  disabled>Turn off</button>
+    <button id="autoBtn" class="ctrl auto full" disabled>Back to auto</button>
+  </div>
 
-  <p class="note" id="hint">Open in <b>Bluefy</b> (or any Web Bluetooth browser) and tap connect. Manual on/off holds until you switch back to auto.</p>
+  <p class="status" id="status"></p>
 
 <script>
 const SERVICE = "7f3e9a20-5c4b-4a1e-9d8f-2b6c1e4a7d90";
@@ -115,88 +124,87 @@ let device, cmdChar;
 const $ = id => document.getElementById(id);
 const enc = new TextEncoder();
 const dec = new TextDecoder();
+const setStatus = t => $("status").textContent = t || "";
 
 function setConn(connected){
   $("dot").classList.toggle("on", connected);
-  $("connTxt").textContent = connected ? "Connected" : "Not connected";
-  $("connectBtn").textContent = connected ? "Disconnect" : "Connect to RoomSensor";
+  $("connTxt").textContent = connected ? "Connected" : "Offline";
+  $("connectBtn").textContent = connected ? "Disconnect" : "Connect";
+  $("connectBtn").classList.toggle("linked", connected);
   ["onBtn","offBtn","autoBtn"].forEach(id => $(id).disabled = !connected);
   if(!connected){
-    $("roomState").textContent="—"; $("roomSub").textContent="Waiting for sensor";
-    $("room").className="room empty"; $("roomIcon").textContent="·";
-    $("acState").textContent="—"; $("acState").className="state off";
+    $("roomState").textContent="—"; $("roomMeta").textContent="";
+    $("roomPin").className="pin";
+    $("acState").textContent="—"; $("acState").className="main acval off";
+    $("modeTag").textContent="auto"; $("modeTag").className="tag auto";
   }
 }
 
 function renderRoom(text){
-  // payload: "OCCUPIED,2" or "EMPTY,0"
   const [state, nStr] = text.split(",");
   const n = parseInt(nStr || "0", 10);
   const occ = state === "OCCUPIED";
-  $("room").className = "room " + (occ ? "occupied" : "empty");
-  $("roomIcon").textContent = occ ? "●" : "·";
   $("roomState").textContent = occ ? "Occupied" : "Empty";
-  $("roomSub").textContent = occ ? (n + (n===1?" person":" people")+" detected") : "No one detected";
+  $("roomMeta").textContent  = occ ? (n + (n===1 ? " person" : " people")) : "No one detected";
+  $("roomPin").className = "pin " + (occ ? "occ" : "empty");
 }
 
 function renderAc(jsonText){
-  // payload: {"acOn":true,"mode":"manual"}
   try{
     const d = JSON.parse(jsonText);
-    $("acState").textContent = d.acOn ? "ON" : "OFF";
-    $("acState").className = "state " + (d.acOn ? "on" : "off");
+    $("acState").textContent = d.acOn ? "On" : "Off";
+    $("acState").className = "main acval " + (d.acOn ? "on" : "off");
     $("modeTag").textContent = d.mode;
-    $("modeTag").className = "mode " + (d.mode === "manual" ? "manual" : "auto");
-  }catch(e){ /* ignore malformed */ }
+    $("modeTag").className = "tag " + (d.mode === "manual" ? "manual" : "auto");
+  }catch(e){}
 }
 
 async function connect(){
   try{
-    $("hint").textContent = "Scanning…";
+    setStatus("Scanning…");
     device = await navigator.bluetooth.requestDevice({
       filters:[{ name:"RoomSensor" }],
       optionalServices:[SERVICE]
     });
-    device.addEventListener("gattserverdisconnected", () => setConn(false));
+    device.addEventListener("gattserverdisconnected", () => {
+      setConn(false); setStatus("Disconnected.");
+    });
     const server  = await device.gatt.connect();
     const service = await server.getPrimaryService(SERVICE);
 
     const occChar = await service.getCharacteristic(OCC);
     await occChar.startNotifications();
-    occChar.addEventListener("characteristicvaluechanged", e =>
-      renderRoom(dec.decode(e.target.value)));
+    occChar.addEventListener("characteristicvaluechanged", e => renderRoom(dec.decode(e.target.value)));
     try{ renderRoom(dec.decode(await occChar.readValue())); }catch(_){}
 
     cmdChar = await service.getCharacteristic(CMD);
     await cmdChar.startNotifications();
-    cmdChar.addEventListener("characteristicvaluechanged", e =>
-      renderAc(dec.decode(e.target.value)));
+    cmdChar.addEventListener("characteristicvaluechanged", e => renderAc(dec.decode(e.target.value)));
     try{ renderAc(dec.decode(await cmdChar.readValue())); }catch(_){}
 
-    setConn(true);
-    $("hint").innerHTML = "Connected. Manual on/off holds until you tap <b>Back to auto</b>.";
+    setConn(true); setStatus("");
   }catch(err){
-    $("hint").textContent = "Couldn't connect: " + err.message + ". Make sure the device is powered and nearby.";
     setConn(false);
+    setStatus("Couldn't connect — make sure the device is powered and nearby.");
   }
 }
 
 async function send(cmd){
   if(!cmdChar) return;
   try{ await cmdChar.writeValue(enc.encode(cmd)); }
-  catch(err){ $("hint").textContent = "Command failed: " + err.message; }
+  catch(err){ setStatus("Command failed. Try reconnecting."); }
 }
 
 $("connectBtn").addEventListener("click", () => {
-  if(device && device.gatt.connected){ device.gatt.disconnect(); }
-  else { connect(); }
+  if(device && device.gatt.connected) device.gatt.disconnect();
+  else connect();
 });
 $("onBtn").addEventListener("click",   () => send("AC_ON"));
 $("offBtn").addEventListener("click",  () => send("AC_OFF"));
 $("autoBtn").addEventListener("click", () => send("AUTO"));
 
 if(!navigator.bluetooth){
-  $("hint").innerHTML = "This browser has no Web Bluetooth. Open this page in <b>Bluefy</b> on iOS or Chrome on Android/desktop.";
+  setStatus("This browser has no Web Bluetooth. Use Bluefy on iOS or Chrome on Android.");
   $("connectBtn").disabled = true;
 }
 </script>
